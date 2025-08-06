@@ -34,12 +34,33 @@ def get_summary(text: str) -> str:
         logging.error(f"Error with Gemini API: {e}")
         return "Failed to get summary due to erro in fetching gemini api"
 
-def extract_clauses(text: str) -> str:
+
+
+def extract_clauses(text: str) -> str: # It will return a JSON string
     try:
-        prompt = f"You are an excellent paralegal or legal assistant. It is difficult to read big legal documents.\nWe want to get all the legal clauses and rules mentioned in the document seperately. This will help in reading the document fast and easy.\nPresent all the legal clauses and rules mentioned in the following document properly:\n\n {text}"
+        
+        prompt = f"""
+        You are an excellent paralegal. From the following legal document, extract the key clauses.
+        Categorize them under the following keys: "liability", "termination", and "confidentiality".
+        Return the output as a single, valid JSON object. The object should have keys which are the clause categories,
+        and the values should be an array of strings, where each string is a clause.
+
+        Example format:
+        {{
+          "liability": ["Clause 1 text...", "Clause 2 text..."],
+          "termination": ["Clause 3 text..."],
+          "confidentiality": []
+        }}
+
+        Document Text:
+        ---
+        {text}
+        ---
+        """
         response = llm.generate_content(prompt)
+        # The AI will return a JSON formatted string, which we can pass directly
         return response.text
     except Exception as e:
         logging.error(f"Error with Gemini API: {e}")
-        return "Failed to get clauses due to erro in fetching gemini api"
-
+        # Return a valid JSON string on error
+        return '{ "liability": [], "termination": [], "confidentiality": [] }'

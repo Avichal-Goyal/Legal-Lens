@@ -26,11 +26,12 @@ export const AnalyzePage = () => {
 
     // Use FormData to prepare the file for sending
     const formData = new FormData();
-    formData.append('file', file);
+    // The backend expects the file to be named 'uploaded_file'
+    formData.append('uploaded_file', file);
 
     try {
-      // Make the API call to your backend's /upload endpoint
-      const response = await fetch(`${BACKEND_URL}/upload`, {
+      // Make the API call to your backend's /simplify_document endpoint
+      const response = await fetch(`${BACKEND_URL}/simplify_document`, {
         method: 'POST',
         body: formData,
       });
