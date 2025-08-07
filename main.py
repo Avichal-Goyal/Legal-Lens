@@ -47,6 +47,10 @@ def get_summary(text: str) -> str:
         You are an excellent paralegal in a big law firm.
         Summarize the following legal document in a simple, easily readable format.
         The summary should be clear enough for a person with little legal knowledge to understand.
+        Instructions:
+        1. Use clear headings to seperate key topics.
+        2. Use bullet points under each heading to list important details
+        3. The summary should be consice and easy to follow
 
         The legal document is:
         ---
@@ -62,12 +66,11 @@ def get_summary(text: str) -> str:
 
 #function for extracting legal clauses from the document
 def extract_clauses(text: str) -> str:
-
     try:
         prompt = f"""
         Analyze the following legal document. Your task is to extract key clauses and categorize them.
 
-        **Instructions:**
+        Instructions
         1.  Identify clauses related to "liability", "termination", and "confidentiality".
         2.  Format your entire output as a single, valid JSON object.
         3.  The keys of the object must be "liability", "termination", and "confidentiality".
