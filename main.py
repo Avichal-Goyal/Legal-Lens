@@ -4,7 +4,7 @@ import logging
 import json
 from dotenv import load_dotenv
 import google.generativeai as genai
-import fitz  # PyMuPDF
+import fitz
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,9 +28,8 @@ else:
 llm = genai.GenerativeModel("gemini-1.5-flash")
 
 
-
+#Parsing text from my document
 def read_pdf_file(file_path: str) -> str:
-    """Reads text content from a PDF file."""
     try:
         doc = fitz.open(file_path)
         text = ""
@@ -41,8 +40,8 @@ def read_pdf_file(file_path: str) -> str:
         logging.error(f"Error reading PDF file at {file_path}: {e}")
         return ""
 
+#to generate a simple and readable summary of the document
 def get_summary(text: str) -> str:
-    """Generates a simple, readable summary of the provided text."""
     try:
         prompt = f"""
         You are an excellent paralegal in a big law firm.
@@ -60,11 +59,10 @@ def get_summary(text: str) -> str:
         logging.error(f"Error with Gemini API during summary generation: {e}")
         return "Could not generate summary due to an API error."
 
+
+#function for extracting legal clauses from the document
 def extract_clauses(text: str) -> str:
-    """
-    Extracts key clauses and returns them as a clean JSON string.
-    This function has a robust prompt to ensure valid JSON output.
-    """
+
     try:
         prompt = f"""
         Analyze the following legal document. Your task is to extract key clauses and categorize them.
@@ -83,15 +81,14 @@ def extract_clauses(text: str) -> str:
         ---
         """
         response = llm.generate_content(prompt)
-        
+
         # Clean up potential markdown formatting from the response text
         clean_text = response.text.strip().replace("```json", "").replace("```", "")
-        
+
         return clean_text
-        
+
     except Exception as e:
         logging.error(f"Error with Gemini API during clause extraction: {e}")
-        # On error, return a valid, empty JSON string with an error message
         return json.dumps({
             "liability": ["An error occurred while trying to extract clauses from the document."],
             "termination": [],
@@ -99,13 +96,13 @@ def extract_clauses(text: str) -> str:
         })
 
 
-# --- 3. FASTAPI APPLICATION ---
+
 
 app = FastAPI(title="Legal-Lens API")
 
-# Configure CORS to allow requests from your React frontend
+
 origins = [
-    "http://localhost:5173",  # Default port for Vite React apps
+    "http://localhost:5173",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -115,37 +112,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Define the structure of the expected JSON response
+
 class ResultStructure(BaseModel):
     summary: str
     clauses: Dict[str, List[str]]
 
 @app.post("/simplify_document", response_model=ResultStructure)
 async def simplify_document(uploaded_file: UploadFile = File(...)):
-    """
-    Main endpoint to receive a document, analyze it, and return results.
-    """
-    # Create a temporary path to save the uploaded file
+
     file_path = f"temp_{uploaded_file.filename}"
-    
+
     try:
-        # Save the uploaded file to the temporary path
+
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(uploaded_file.file, buffer)
 
-        # Read the text from the saved file
+
         doc_text = read_pdf_file(file_path)
 
-        # If reading fails, doc_text will be empty. Raise an error.
+
         if not doc_text:
             logging.error("Document text is empty. The file might be unreadable or empty.")
             raise HTTPException(status_code=400, detail="Could not read text from the uploaded document.")
 
-        # Proceed with analysis
+        # Calling my functions
         summary = get_summary(doc_text)
         clauses_json_string = extract_clauses(doc_text)
 
-        # Safely parse the JSON string for clauses
+        # Checking whether the clauses is in json format
         try:
             clauses_dict = json.loads(clauses_json_string)
         except json.JSONDecodeError:
@@ -155,13 +149,11 @@ async def simplify_document(uploaded_file: UploadFile = File(...)):
         return {"summary": summary, "clauses": clauses_dict}
 
     except HTTPException as http_exc:
-        # Re-raise HTTPException so FastAPI handles it
         raise http_exc
     except Exception as e:
-        # Catch any other unexpected errors
         logging.error(f"An unexpected server error occurred: {e}")
         raise HTTPException(status_code=500, detail="An internal server error occurred during analysis.")
     finally:
-        # Always clean up and delete the temporary file
+        # Cleaning temporary file from my local disk
         if os.path.exists(file_path):
             os.remove(file_path)
